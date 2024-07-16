@@ -28,6 +28,7 @@ const Sidebar = () => {
   };
 
   useEffect(() => {
+    //Group room by createdAt
     const date = rooms.reduce((acc, room) => {
       const createdAt = room.createdAt;
       const dateOfCreatedAt = new Date(createdAt);
@@ -38,8 +39,6 @@ const Sidebar = () => {
         start: dateOfCreatedAt,
         end: dateOfToday,
       });
-
-      console.log(intervalDuration);
 
       if (
         !intervalDuration.years &&
@@ -60,7 +59,7 @@ const Sidebar = () => {
       ) {
         distance = "Previous 30 days";
       } else if (!intervalDuration.years && intervalDuration.months > 0) {
-        distance = dateOfCreatedAt.getMonth();
+        distance = dateOfCreatedAt.toLocaleString("default", { month: "long" });
       } else {
         distance = dateOfCreatedAt.getFullYear();
       }
@@ -70,7 +69,40 @@ const Sidebar = () => {
       acc[distance].push(createdAt);
       return acc;
     }, {});
-    console.log(date);
+
+    // Define the order of the categories
+    const order = ["Today", "Previous 7 days", "Previous 30 days"];
+
+    // Sort the keys based on the defined order and then by month/year
+    const sortedKeys = Object.keys(date).sort((a, b) => {
+      // If both a and b are in the order array
+      if (order.includes(a) && order.includes(b)) {
+        return order.indexOf(a) - order.indexOf(b);
+      }
+      // If only a is in the order array
+      if (order.includes(a)) {
+        return -1;
+      }
+      // If only b is in the order array
+      if (order.includes(b)) {
+        return 1;
+      }
+      // If both a and b are not in the order array, compare as month/year
+      if (isNaN(a) && isNaN(b)) {
+        return (
+          new Date(`1 ${a} 2000`).getMonth() -
+          new Date(`1 ${b} 2000`).getMonth()
+        );
+      }
+      // Compare as year
+      return a - b;
+    });
+
+    // Create a new object with sorted keys
+    const sortedDate = sortedKeys.reduce((acc, key) => {
+      acc[key] = date[key];
+      return acc;
+    }, {});
   }, []);
 
   return (
