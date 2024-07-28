@@ -1,36 +1,35 @@
 "use client";
 
-import { FiEdit, FiGrid, FiSidebar } from "react-icons/fi";
+import { FiEdit, FiGrid, FiMoreHorizontal, FiSidebar } from "react-icons/fi";
+import { BsStars } from "react-icons/bs";
 import { AiOutlineOpenAI } from "react-icons/ai";
 import { Button } from "../ui/button";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import rooms from "@/data/rooms";
-import { formatDistanceToNow, intervalToDuration } from "date-fns";
+import { intervalToDuration } from "date-fns";
+import { useAppDispatch, useAppSelector } from "@/lib/hook";
+import {
+  setHoveredItem,
+  setRoomData,
+} from "@/lib/features/siderbar/sidebarSlice";
 
 const Sidebar = () => {
-  const hooverToggle = useRef(null);
-  const roomsToggle = useRef(rooms.map(() => React.createRef()));
+  const dispatch = useAppDispatch();
+  const { roomData, hoveredItem } = useAppSelector((state) => state.sidebar);
 
-  const handleEnterHooverToggle = (index = -1) => {
-    if (index == -1) {
-      hooverToggle.current.style.display = "block";
-    } else {
-      roomsToggle.current[index].style.display = "block";
-    }
+  const handleMouseEnter = (key, index) => {
+    dispatch(setHoveredItem({ key, index }));
   };
 
-  const handleLeaveHooverToggle = (index = -1) => {
-    if (index == -1) {
-      hooverToggle.current.style.display = "none";
-    } else {
-      roomsToggle.current[index].style.display = "none";
-    }
+  const handleMouseLeave = () => {
+    dispatch(setHoveredItem({ key: null, index: null }));
   };
 
   useEffect(() => {
-    //Group room by createdAt
+    // Group rooms by createdAt
     const date = rooms.reduce((acc, room) => {
       const createdAt = room.createdAt;
+      const title = room.title;
       const dateOfCreatedAt = new Date(createdAt);
       const dateOfToday = new Date();
 
@@ -66,7 +65,7 @@ const Sidebar = () => {
       if (!acc[distance]) {
         acc[distance] = [];
       }
-      acc[distance].push(createdAt);
+      acc[distance].push(title);
       return acc;
     }, {});
 
@@ -103,11 +102,17 @@ const Sidebar = () => {
       acc[key] = date[key];
       return acc;
     }, {});
-  }, []);
+
+    dispatch(setRoomData(sortedDate));
+  }, [dispatch]);
+
+  if (!roomData) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col">
-      <div className=" flex justify-between text-gray-300 pb-2">
+      <div className=" flex justify-between text-gray-300 pb-2 px-5">
         <Button variant="ghost" className="px-1 py-0">
           <FiSidebar className=" text-xl" />
         </Button>
@@ -116,54 +121,77 @@ const Sidebar = () => {
           <FiEdit className="text-xl" />
         </Button>
       </div>
-      <div className="flex flex-col text-gray-300">
+      <div className="flex flex-col text-gray-300 max-h-[480px] overflow-auto ps-2">
         <div className="flex flex-col mb-6">
           <Button
-            onMouseEnter={handleEnterHooverToggle}
-            onMouseLeave={handleLeaveHooverToggle}
+            onMouseEnter={() => handleMouseEnter("main", -1)}
+            onMouseLeave={handleMouseLeave}
             variant="ghost"
-            className="flex justify-between  px-1"
+            className="flex justify-between ps-3"
           >
             <div className=" inline-flex items-center">
               <AiOutlineOpenAI className="me-2 text-xl" /> <p>ChatGPT</p>
             </div>
-            <div
-              ref={hooverToggle}
-              style={{ display: "none" }}
-              onClick={() => console.log("clicked")}
-              className=" hover:text-white"
-            >
-              <FiEdit />
-            </div>
+            {hoveredItem.key === "main" && hoveredItem.index === -1 && (
+              <div
+                onClick={() => console.log("clicked")}
+                className=" hover:text-white"
+              >
+                <FiEdit />
+              </div>
+            )}
           </Button>
 
-          <Button variant="ghost" className="flex justify-between  px-1">
+          <Button variant="ghost" className="flex justify-between ps-3">
             <div className=" inline-flex items-center">
               <FiGrid className="me-2 text-xl" /> <p>Explore GPTs</p>
             </div>
           </Button>
         </div>
 
-        <div className="flex flex-col mb-6">
-          <Button
-            onMouseEnter={handleEnterHooverToggle}
-            onMouseLeave={handleLeaveHooverToggle}
-            variant="ghost"
-            className="flex justify-between  px-1"
-          >
-            <div className=" inline-flex items-center">
-              <AiOutlineOpenAI className="me-2 text-xl" /> <p>ChatGPT</p>
+        <div className="flex flex-col ps-2">
+          {Object.keys(roomData).map((key) => (
+            <div key={key} className="flex flex-col mb-10">
+              <div className="text-xs text-gray-400 ps-2">{key}</div>
+              {roomData[key].map((item, j) => (
+                <Button
+                  variant="ghost"
+                  key={j}
+                  onMouseEnter={() => handleMouseEnter(key, j)}
+                  onMouseLeave={handleMouseLeave}
+                  className="ps-2 mt-1 flex justify-between"
+                >
+                  <div className=" inline-flex items-center w-full">
+                    <p className=" text-clip overflow-hidden">{item}</p>
+                  </div>
+                  {hoveredItem.key === key && hoveredItem.index === j && (
+                    <div
+                      onClick={() => console.log("clicked")}
+                      className=" hover:text-white"
+                    >
+                      <FiMoreHorizontal />
+                    </div>
+                  )}
+                </Button>
+              ))}
             </div>
-            <div
-              ref={hooverToggle}
-              style={{ display: "none" }}
-              onClick={() => console.log("clicked")}
-              className=" hover:text-white"
-            >
-              <FiEdit />
-            </div>
-          </Button>
+          ))}
         </div>
+      </div>
+
+      <div className=" mx-2 mt-1">
+        <Button
+          variant="ghost"
+          className="flex items-center gap-2 ps-5 w-full py-7"
+        >
+          <div className=" rounded-full p-1 border border-gray-700">
+            <BsStars className="text-white" />
+          </div>
+          <div className="flex flex-col text-start">
+            <p className="text-white text-sm">Upgrade Plan</p>
+            <p className="text-xs text-gray-600">Get GPT-4, DALL-E, and more</p>
+          </div>
+        </Button>
       </div>
     </div>
   );
